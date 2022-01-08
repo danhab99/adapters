@@ -6,6 +6,8 @@ import * as defaultFragments from "./graphql/fragments"
 
 export type { DgraphClientParams, DgraphClientError } from "./client"
 
+type Transformer<I = any, R = any> = (x: I) => R
+
 export interface DgraphAdapterOptions {
   fragments?: {
     User?: string
@@ -13,6 +15,7 @@ export interface DgraphAdapterOptions {
     Session?: string
     VerificationToken?: string
   }
+  transformers?: Record<keyof Adapter, Transformer>
 }
 
 export { format }
@@ -22,6 +25,8 @@ export function DgraphAdapter(
   options?: DgraphAdapterOptions
 ): Adapter {
   const c = dgraphClient(client)
+  const change = <T>(func: keyof Adapter, x: T) =>
+    options?.transformers?.[func](x) ?? x
 
   const fragments = { ...defaultFragments, ...options?.fragments }
   return {
@@ -37,7 +42,9 @@ export function DgraphAdapter(
           }
           ${fragments.User}
         `,
-        { input }
+        {
+          input: change("createUser", input),
+        }
       )
 
       return format.from<any>(result?.user[0])
@@ -52,7 +59,7 @@ export function DgraphAdapter(
           }
           ${fragments.User}
         `,
-        { id }
+        { id: change("getUser", id) }
       )
 
       return format.from<any>(result)
@@ -67,7 +74,7 @@ export function DgraphAdapter(
           }
           ${fragments.User}
         `,
-        { email }
+        { email: change("getUserByEmail", email) }
       )
       return format.from<any>(user)
     },
@@ -91,7 +98,7 @@ export function DgraphAdapter(
           }
           ${fragments.User}
         `,
-        provider_providerAccountId
+        change("getUserByAccount", provider_providerAccountId)
       )
       return format.from<any>(account?.user)
     },
@@ -107,7 +114,7 @@ export function DgraphAdapter(
           }
           ${fragments.User}
         `,
-        { id, input }
+        change("updateUser", { id, input })
       )
       return format.from<any>(result.user[0])
     },
@@ -128,7 +135,7 @@ export function DgraphAdapter(
             }
           }
         `,
-        { id }
+        { id: change("deleteUser", id) }
       )
 
       const deletedUser = format.from<any>(result.user[0])
@@ -166,7 +173,7 @@ export function DgraphAdapter(
           }
           ${fragments.Account}
         `,
-        { input: { ...input, user: { id: userId } } }
+        { input: change("linkAccount", { ...input, user: { id: userId } }) }
       )
       return data
     },
@@ -186,7 +193,7 @@ export function DgraphAdapter(
             }
           }
         `,
-        provider_providerAccountId
+        change("unlinkAccount", provider_providerAccountId)
       )
     },
 
@@ -204,7 +211,7 @@ export function DgraphAdapter(
           ${fragments.User}
           ${fragments.Session}
         `,
-        { sessionToken }
+        { sessionToken: change("getSessionAndUser", sessionToken) }
       )
       if (!sessionAndUser) return null
 
@@ -216,7 +223,9 @@ export function DgraphAdapter(
       }
     },
     async createSession(data) {
-      const { userId, ...input } = data
+      const { userId, ...input } = options?.transformers?.createSession
+        ? options?.transformers?.createSession(data)
+        : data
 
       await c.run<any>(
         /* GraphQL */ `
@@ -229,7 +238,7 @@ export function DgraphAdapter(
           }
           ${fragments.Session}
         `,
-        { input: { ...input, user: { id: userId } } }
+        { input: change("createSession", { ...input, user: { id: userId } }) }
       )
 
       return data as any
@@ -254,7 +263,7 @@ export function DgraphAdapter(
           }
           ${fragments.Session}
         `,
-        { sessionToken, input }
+        change("updateSession", { sessionToken, input })
       )
       const session = format.from<any>(result.session[0])
 
@@ -271,7 +280,7 @@ export function DgraphAdapter(
             }
           }
         `,
-        { sessionToken }
+        { sessionToken: change("deleteSession", sessionToken) }
       )
     },
 
@@ -284,7 +293,7 @@ export function DgraphAdapter(
             }
           }
         `,
-        { input }
+        { input: change("createVerificationToken", input) }
       )
       return format.from<any>(result)
     },
@@ -305,7 +314,7 @@ export function DgraphAdapter(
           }
           ${fragments.VerificationToken}
         `,
-        params
+        change("useVerificationToken", params)
       )
 
       return format.from<any>(result.verificationToken[0])
