@@ -15,7 +15,7 @@ export interface DgraphAdapterOptions {
     Session?: string
     VerificationToken?: string
   }
-  transformers?: Partial<Record<keyof Adapter, Transformer>>
+  transformers?: Partial<{ [x: keyof Adapter]: Transformer }>
 }
 
 export { format }
