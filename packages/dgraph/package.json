@@ -41,7 +41,9 @@
     "ts-jest": "^27.0.3"
   },
   "dependencies": {
+    "adapters": "git+https://github.com/nextauthjs/adapters.git",
     "jsonwebtoken": "^8.5.1",
+    "next-auth": "^4.0.6",
     "node-fetch": "^2.6.1"
   }
 }
