@@ -15,7 +15,7 @@ export interface DgraphAdapterOptions {
     Session?: string
     VerificationToken?: string
   }
-  transformers?: Record<keyof Adapter, Transformer>
+  transformers?: Partial<Record<keyof Adapter, Transformer>>
 }
 
 export { format }
@@ -26,7 +26,7 @@ export function DgraphAdapter(
 ): Adapter {
   const c = dgraphClient(client)
   const change = <T>(func: keyof Adapter, x: T) =>
-    options?.transformers?.[func](x) ?? x
+    options?.transformers?.[func]?.(x) ?? x
 
   const fragments = { ...defaultFragments, ...options?.fragments }
   return {
